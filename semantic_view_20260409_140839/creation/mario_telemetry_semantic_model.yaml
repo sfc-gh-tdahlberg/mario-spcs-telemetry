@@ -1,0 +1,248 @@
+name: MARIO_TELEMETRY
+description: Telemetry analytics model for Super Mario Bros game running on Snowpark
+  Container Services (SPCS). Tracks real-time game events, player sessions, deaths
+  by level, key presses, powerup collection, and event timelines collected via OpenTelemetry
+  instrumentation.
+tables:
+  - name: GAME_EVENTS_LIVE
+    base_table:
+      database: DIS_MARIO
+      schema: PUBLIC
+      table: GAME_EVENTS_LIVE
+    dimensions:
+      - name: EVENT_TYPE
+        expr: EVENT_TYPE
+        data_type: VARCHAR
+      - name: PLAYER_NAME
+        expr: PLAYER_NAME
+        data_type: VARCHAR
+        description: Snowflake username of the player who generated this event
+      - name: LEVEL
+        expr: LEVEL
+        data_type: VARCHAR
+      - name: COINS
+        expr: COINS
+        data_type: VARCHAR
+      - name: LIVES
+        expr: LIVES
+        data_type: VARCHAR
+      - name: KEY_NAME
+        expr: KEY_NAME
+        data_type: VARCHAR
+      - name: POWERUP_TYPE
+        expr: POWERUP_TYPE
+        data_type: VARCHAR
+      - name: DURATION
+        expr: DURATION
+        data_type: VARCHAR
+      - name: SESSION_ID
+        expr: SESSION_ID
+        data_type: VARCHAR
+    time_dimensions:
+      - name: TIMESTAMP
+        expr: TIMESTAMP
+        data_type: TIMESTAMP_NTZ
+  - name: EVENT_TIMELINE_LIVE
+    base_table:
+      database: DIS_MARIO
+      schema: PUBLIC
+      table: EVENT_TIMELINE_LIVE
+    dimensions:
+      - name: EVENT_TYPE
+        expr: EVENT_TYPE
+        data_type: VARCHAR
+      - name: EVENT_COUNT
+        expr: EVENT_COUNT
+        data_type: NUMBER
+    time_dimensions:
+      - name: MINUTE
+        expr: MINUTE
+        data_type: TIMESTAMP_NTZ
+  - name: KEY_PRESSES_LIVE
+    base_table:
+      database: DIS_MARIO
+      schema: PUBLIC
+      table: KEY_PRESSES_LIVE
+    primary_key:
+      columns:
+        - PLAYER_NAME
+        - KEY_NAME
+    dimensions:
+      - name: PLAYER_NAME
+        expr: PLAYER_NAME
+        data_type: VARCHAR
+        description: Snowflake username of the player
+      - name: KEY_NAME
+        expr: KEY_NAME
+        data_type: VARCHAR
+      - name: PRESSES
+        expr: PRESSES
+        data_type: NUMBER
+  - name: DEATHS_BY_LEVEL_LIVE
+    base_table:
+      database: DIS_MARIO
+      schema: PUBLIC
+      table: DEATHS_BY_LEVEL_LIVE
+    primary_key:
+      columns:
+        - PLAYER_NAME
+        - LEVEL
+    dimensions:
+      - name: PLAYER_NAME
+        expr: PLAYER_NAME
+        data_type: VARCHAR
+        description: Snowflake username of the player
+      - name: LEVEL
+        expr: LEVEL
+        data_type: VARCHAR
+      - name: DEATHS
+        expr: DEATHS
+        data_type: NUMBER
+  - name: POWERUPS_LIVE
+    base_table:
+      database: DIS_MARIO
+      schema: PUBLIC
+      table: POWERUPS_LIVE
+    dimensions:
+      - name: PLAYER_NAME
+        expr: PLAYER_NAME
+        data_type: VARCHAR
+        description: Snowflake username of the player
+      - name: POWERUP_TYPE
+        expr: POWERUP_TYPE
+        data_type: VARCHAR
+      - name: LEVEL
+        expr: LEVEL
+        data_type: VARCHAR
+      - name: _COUNT
+        expr: '"COUNT"'
+        data_type: NUMBER
+  - name: PLAYER_SESSIONS_LIVE
+    base_table:
+      database: DIS_MARIO
+      schema: PUBLIC
+      table: PLAYER_SESSIONS_LIVE
+    dimensions:
+      - name: PLAYER_NAME
+        expr: PLAYER_NAME
+        data_type: VARCHAR
+        description: Snowflake username of the player
+      - name: SESSION_ID
+        expr: SESSION_ID
+        data_type: VARCHAR
+      - name: HIGHEST_LEVEL
+        expr: HIGHEST_LEVEL
+        data_type: VARCHAR
+      - name: DEATHS
+        expr: DEATHS
+        data_type: NUMBER
+      - name: LEVELS_WON
+        expr: LEVELS_WON
+        data_type: NUMBER
+      - name: COINS
+        expr: COINS
+        data_type: NUMBER
+      - name: DURATION_SECONDS
+        expr: DURATION_SECONDS
+        data_type: NUMBER
+    time_dimensions:
+      - name: SESSION_START
+        expr: SESSION_START
+        data_type: TIMESTAMP_NTZ
+      - name: SESSION_END
+        expr: SESSION_END
+        data_type: TIMESTAMP_NTZ
+relationships:
+  - name: GAME_EVENTS_LIVE_TO_KEY_PRESSES_LIVE
+    left_table: GAME_EVENTS_LIVE
+    right_table: KEY_PRESSES_LIVE
+    relationship_columns:
+      - left_column: PLAYER_NAME
+        right_column: PLAYER_NAME
+      - left_column: KEY_NAME
+        right_column: KEY_NAME
+    join_type: inner
+    relationship_type: many_to_one
+  - name: POWERUPS_LIVE_TO_DEATHS_BY_LEVEL_LIVE
+    left_table: POWERUPS_LIVE
+    right_table: DEATHS_BY_LEVEL_LIVE
+    relationship_columns:
+      - left_column: PLAYER_NAME
+        right_column: PLAYER_NAME
+      - left_column: LEVEL
+        right_column: LEVEL
+    join_type: inner
+    relationship_type: many_to_one
+verified_queries:
+  - name: "0;1"
+    question: Which game events occur most frequently in Super Mario Bros gameplay?
+    sql: SELECT EVENT_TYPE, COUNT(*) AS EVENT_COUNT FROM game_events_live GROUP BY
+      EVENT_TYPE ORDER BY EVENT_COUNT DESC
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "1;1"
+    question: Which level has the most deaths?
+    sql: SELECT LEVEL, DEATHS FROM deaths_by_level_live ORDER BY DEATHS DESC
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "2;1"
+    question: Which keys are pressed most frequently by players?
+    sql: SELECT KEY_NAME, PRESSES FROM key_presses_live ORDER BY PRESSES DESC
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "3;1"
+    question: What are the most collected powerup types?
+    sql: SELECT POWERUP_TYPE, SUM(COUNT) AS TOTAL FROM powerups_live GROUP BY POWERUP_TYPE
+      ORDER BY TOTAL DESC
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "4;1"
+    question: Which player sessions collected the most coins?
+    sql: SELECT PLAYER_NAME, SESSION_ID, HIGHEST_LEVEL, DEATHS, LEVELS_WON, COINS
+      FROM player_sessions_live ORDER BY COINS DESC
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "5;1"
+    question: How many game events occurred per hour?
+    sql: SELECT DATE_TRUNC('HOUR', TIMESTAMP) AS HOUR, COUNT(*) AS EVENTS FROM game_events_live
+      GROUP BY HOUR ORDER BY HOUR
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "6;1"
+    question: What are the most recent game events happening in Super Mario Bros?
+    sql: SELECT EVENT_TYPE, MINUTE, EVENT_COUNT FROM event_timeline_live ORDER BY
+      MINUTE DESC LIMIT 20
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "7;1"
+    question: What powerups were collected on each level?
+    sql: SELECT LEVEL, POWERUP_TYPE, COUNT FROM powerups_live ORDER BY LEVEL, COUNT
+      DESC
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "8;1"
+    question: What is the overall activity summary showing total events, unique player
+      sessions, and different types of events in the Mario game?
+    sql: SELECT COUNT(*) AS TOTAL_EVENTS, COUNT(DISTINCT SESSION_ID) AS UNIQUE_SESSIONS,
+      COUNT(DISTINCT EVENT_TYPE) AS EVENT_TYPES FROM game_events_live
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "9;1"
+    question: How long did each gaming session last and what was achieved by each
+      player?
+    sql: SELECT PLAYER_NAME, SESSION_ID, DEATHS, LEVELS_WON, COINS, DURATION_SECONDS
+      FROM player_sessions_live
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "10;1"
+    question: Which players have the most game sessions?
+    sql: SELECT PLAYER_NAME, COUNT(*) AS SESSION_COUNT, SUM(COINS) AS TOTAL_COINS,
+      SUM(DEATHS) AS TOTAL_DEATHS FROM player_sessions_live GROUP BY PLAYER_NAME
+      ORDER BY SESSION_COUNT DESC
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator
+  - name: "11;1"
+    question: How do different players compare in terms of deaths per level?
+    sql: SELECT PLAYER_NAME, LEVEL, DEATHS FROM deaths_by_level_live ORDER BY DEATHS DESC
+    verified_at: 1775736591
+    verified_by: Semantic Model Generator

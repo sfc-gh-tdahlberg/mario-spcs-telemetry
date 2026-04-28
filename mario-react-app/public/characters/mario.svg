@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Mario hat -->
+  <rect x="18" y="4" width="28" height="8" rx="2" fill="#E52521"/>
+  <rect x="14" y="8" width="36" height="6" rx="2" fill="#E52521"/>
+  <!-- M logo -->
+  <text x="28" y="13" font-size="8" font-weight="bold" fill="white" font-family="Arial">M</text>
+  <!-- Face -->
+  <rect x="16" y="14" width="32" height="18" rx="4" fill="#FFB266"/>
+  <!-- Eyes -->
+  <ellipse cx="24" cy="22" rx="3" ry="3.5" fill="white"/>
+  <ellipse cx="36" cy="22" rx="3" ry="3.5" fill="white"/>
+  <circle cx="25" cy="22" r="1.5" fill="#1B3A5C"/>
+  <circle cx="37" cy="22" r="1.5" fill="#1B3A5C"/>
+  <!-- Mustache -->
+  <path d="M20 27 Q24 31 32 27 Q40 31 44 27" stroke="#4A2800" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Nose -->
+  <ellipse cx="30" cy="25" rx="4" ry="3" fill="#D4874E"/>
+  <!-- Overalls -->
+  <rect x="14" y="32" width="36" height="20" rx="3" fill="#0051A8"/>
+  <!-- Buttons -->
+  <circle cx="24" cy="38" r="2" fill="#FFD700"/>
+  <circle cx="40" cy="38" r="2" fill="#FFD700"/>
+  <!-- Shirt -->
+  <rect x="20" y="32" width="24" height="6" fill="#E52521"/>
+  <!-- Hands -->
+  <ellipse cx="10" cy="40" rx="5" ry="4" fill="white"/>
+  <ellipse cx="54" cy="40" rx="5" ry="4" fill="white"/>
+  <!-- Shoes -->
+  <ellipse cx="22" cy="56" rx="8" ry="5" fill="#6B3A1F"/>
+  <ellipse cx="42" cy="56" rx="8" ry="5" fill="#6B3A1F"/>
+</svg>

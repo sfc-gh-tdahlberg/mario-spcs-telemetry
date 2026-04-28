@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <ellipse cx="20" cy="28" rx="16" ry="10" fill="#7BC47F"/>
+  <ellipse cx="20" cy="14" rx="10" ry="12" fill="#7BC47F"/>
+  <!-- Eyes -->
+  <ellipse cx="15" cy="12" rx="4" ry="5" fill="white"/>
+  <ellipse cx="25" cy="12" rx="4" ry="5" fill="white"/>
+  <circle cx="16" cy="13" r="2" fill="black"/>
+  <circle cx="26" cy="13" r="2" fill="black"/>
+  <!-- Eyebrows -->
+  <path d="M11 7 L19 9" stroke="#2D6B30" stroke-width="2" stroke-linecap="round"/>
+  <path d="M29 7 L21 9" stroke="#2D6B30" stroke-width="2" stroke-linecap="round"/>
+</svg>

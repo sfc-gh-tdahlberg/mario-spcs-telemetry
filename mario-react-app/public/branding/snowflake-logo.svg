@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" fill="none">
+  <g transform="translate(0,2)">
+    <path d="M18 0L21.12 6.36L28 7.64L23 12.64L24.24 19.52L18 16.2L11.76 19.52L13 12.64L8 7.64L14.88 6.36L18 0Z" fill="#29B5E8"/>
+    <path d="M18 16L21.12 22.36L28 23.64L23 28.64L24.24 35.52L18 32.2L11.76 35.52L13 28.64L8 23.64L14.88 22.36L18 16Z" fill="#29B5E8" opacity="0.7"/>
+    <path d="M2 8L5.12 14.36L12 15.64L7 20.64L8.24 27.52L2 24.2L-4.24 27.52L-3 20.64L-8 15.64L-1.12 14.36L2 8Z" fill="#29B5E8" opacity="0.5"/>
+    <path d="M34 8L37.12 14.36L44 15.64L39 20.64L40.24 27.52L34 24.2L27.76 27.52L29 20.64L24 15.64L30.88 14.36L34 8Z" fill="#29B5E8" opacity="0.5"/>
+  </g>
+  <text x="52" y="27" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="700" fill="white" letter-spacing="-0.5">snowflake</text>
+</svg>

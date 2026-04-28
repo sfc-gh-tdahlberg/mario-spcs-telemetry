@@ -1,0 +1,27 @@
+{
+  "semantic_view_name": "MARIO_TELEMETRY",
+  "target_database": "DIS_MARIO",
+  "target_schema": "PUBLIC",
+  "request_id": "fastgen_query_id_stored_in_session",
+  "warnings": [],
+  "errors": [],
+  "suggestions_applied": [
+    "GAME_EVENTS_LIVE_TO_KEY_PRESSES_LIVE",
+    "POWERUPS_LIVE_TO_DEATHS_BY_LEVEL_LIVE"
+  ],
+  "suggestions_filtered": [
+    {
+      "name": "GAME_EVENTS_LIVE_TO_PLAYER_SESSIONS_LIVE",
+      "reason": "Many-to-many relationships excluded",
+      "relationship_type": "many_to_many"
+    }
+  ],
+  "tables_included": [
+    "DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE",
+    "DIS_MARIO.PUBLIC.EVENT_TIMELINE_LIVE",
+    "DIS_MARIO.PUBLIC.KEY_PRESSES_LIVE",
+    "DIS_MARIO.PUBLIC.DEATHS_BY_LEVEL_LIVE",
+    "DIS_MARIO.PUBLIC.POWERUPS_LIVE",
+    "DIS_MARIO.PUBLIC.PLAYER_SESSIONS_LIVE"
+  ]
+}

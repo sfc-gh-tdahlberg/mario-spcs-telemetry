@@ -1,6 +1,8 @@
 var MarioTelemetry = (function() {
     var SIDECAR_URL = window.location.protocol + "//" + window.location.host + "/telemetry";
+    var WHOAMI_URL = window.location.protocol + "//" + window.location.host + "/whoami";
     var sessionStart = Date.now();
+    var playerName = "unknown";
     var eventQueue = [];
     var flushInterval = null;
 
@@ -22,7 +24,38 @@ var MarioTelemetry = (function() {
         }
     }
 
+    function fetchPlayerName() {
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", WHOAMI_URL, true);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    try {
+                        var resp = JSON.parse(xhr.responseText);
+                        if (resp.player_name && resp.player_name !== "unknown") {
+                            playerName = resp.player_name;
+                            showPlayerBanner(playerName);
+                            console.log("Player identified: " + playerName);
+                        }
+                    } catch(e) { console.warn("whoami parse error: " + e); }
+                }
+            };
+            xhr.send();
+        } catch(e) { console.warn("whoami fetch error: " + e); }
+    }
+
+    function showPlayerBanner(name) {
+        var existing = document.getElementById("mario-player-banner");
+        if (existing) existing.remove();
+        var banner = document.createElement("div");
+        banner.id = "mario-player-banner";
+        banner.style.cssText = "position:fixed;top:8px;right:8px;z-index:99999;background:rgba(0,0,0,0.75);color:#FFD700;font-family:'Press Start 2P',monospace;font-size:11px;padding:6px 12px;border-radius:4px;border:2px solid #FFD700;pointer-events:none;text-shadow:1px 1px 0 #000;";
+        banner.textContent = "\u2605 " + name;
+        document.body.appendChild(banner);
+    }
+
     function init() {
+        fetchPlayerName();
         flushInterval = setInterval(flush, 2000);
 
         var origTitleEnter = Mario.TitleState.prototype.Enter;
@@ -36,7 +69,7 @@ var MarioTelemetry = (function() {
             var wasPressing = Enjine.KeyboardInput.IsKeyDown(Enjine.Keys.S);
             origTitleCheck.call(this, context);
             if (wasPressing) {
-                send({event: "game_start", timestamp: Date.now(), lives: Mario.MarioCharacter.Lives});
+                send({event: "game_start", timestamp: Date.now(), lives: Mario.MarioCharacter.Lives, player_name: playerName});
             }
         };
 
@@ -50,7 +83,8 @@ var MarioTelemetry = (function() {
                 difficulty: this.LevelDifficulty,
                 type: this.LevelType,
                 lives: Mario.MarioCharacter.Lives,
-                coins: Mario.MarioCharacter.Coins
+                coins: Mario.MarioCharacter.Coins,
+                player_name: playerName
             });
         };
 
@@ -63,7 +97,8 @@ var MarioTelemetry = (function() {
                     timestamp: Date.now(),
                     level: Mario.MarioCharacter.LevelString,
                     coins: Mario.MarioCharacter.Coins,
-                    session_duration: (Date.now() - sessionStart) / 1000
+                    session_duration: (Date.now() - sessionStart) / 1000,
+                    player_name: playerName
                 });
             }
             if (Mario.MarioCharacter.DeathTime > 0 && !this._telemetryDeathSent) {
@@ -75,7 +110,8 @@ var MarioTelemetry = (function() {
                     lives: Mario.MarioCharacter.Lives,
                     coins: Mario.MarioCharacter.Coins,
                     large: Mario.MarioCharacter.Large,
-                    fire: Mario.MarioCharacter.Fire
+                    fire: Mario.MarioCharacter.Fire,
+                    player_name: playerName
                 });
             }
             if (Mario.MarioCharacter.WinTime > 0 && !this._telemetryWinSent) {
@@ -86,7 +122,8 @@ var MarioTelemetry = (function() {
                     level: Mario.MarioCharacter.LevelString,
                     lives: Mario.MarioCharacter.Lives,
                     coins: Mario.MarioCharacter.Coins,
-                    time_left: this.TimeLeft | 0
+                    time_left: this.TimeLeft | 0,
+                    player_name: playerName
                 });
             }
             origLevelCheck.call(this, context);
@@ -96,7 +133,7 @@ var MarioTelemetry = (function() {
         if (origGetCoin) {
             Mario.Character.prototype.GetCoin = function() {
                 origGetCoin.call(this);
-                send({event: "coin", timestamp: Date.now(), total_coins: this.Coins});
+                send({event: "coin", timestamp: Date.now(), total_coins: this.Coins, player_name: playerName});
             };
         }
 
@@ -105,9 +142,9 @@ var MarioTelemetry = (function() {
             var block = this.Level.GetBlock(x, y);
             if ((Mario.Tile.Behaviors[block & 0xff] & Mario.Tile.Special) > 0) {
                 if (!Mario.MarioCharacter.Large) {
-                    send({event: "powerup_spawn", timestamp: Date.now(), type: "mushroom", level: Mario.MarioCharacter.LevelString});
+                    send({event: "powerup_spawn", timestamp: Date.now(), type: "mushroom", level: Mario.MarioCharacter.LevelString, player_name: playerName});
                 } else {
-                    send({event: "powerup_spawn", timestamp: Date.now(), type: "fire_flower", level: Mario.MarioCharacter.LevelString});
+                    send({event: "powerup_spawn", timestamp: Date.now(), type: "fire_flower", level: Mario.MarioCharacter.LevelString, player_name: playerName});
                 }
             }
             origBump.call(this, x, y, canBreakBricks);
@@ -141,18 +178,18 @@ var MarioTelemetry = (function() {
                 var now = Date.now();
                 if (!keyThrottle[name] || now - keyThrottle[name] > 500) {
                     keyThrottle[name] = now;
-                    send({event: "key_press", key: name, timestamp: now});
+                    send({event: "key_press", key: name, timestamp: now, player_name: playerName});
                 }
             }
         });
 
         window.addEventListener("beforeunload", function() {
-            send({event: "session_end", timestamp: Date.now(), session_duration: (Date.now() - sessionStart) / 1000});
+            send({event: "session_end", timestamp: Date.now(), session_duration: (Date.now() - sessionStart) / 1000, player_name: playerName});
             flush();
         });
 
         send({event: "telemetry_init", timestamp: Date.now()});
-        console.log("Mario Telemetry initialized - sending events to sidecar");
+        console.log("Mario Telemetry initialized - player: " + playerName);
     }
 
     return {init: init};

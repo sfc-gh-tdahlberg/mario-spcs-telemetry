@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 32" fill="none">
+  <rect x="0" y="0" width="220" height="32" rx="16" fill="rgba(41,181,232,0.15)" stroke="#29B5E8" stroke-width="1"/>
+  <text x="14" y="20.5" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="#29B5E8">Powered by</text>
+  <text x="94" y="20.5" font-family="'Courier New', monospace" font-size="11" font-weight="700" fill="white">Cortex Code</text>
+  <circle cx="206" cy="16" r="4" fill="#29B5E8" opacity="0.8">
+    <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
+  </circle>
+</svg>

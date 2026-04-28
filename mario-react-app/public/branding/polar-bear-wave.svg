@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <style>
+    @keyframes wave {
+      0%, 100% { transform: rotate(0deg); }
+      15% { transform: rotate(14deg); }
+      30% { transform: rotate(-8deg); }
+      45% { transform: rotate(14deg); }
+      60% { transform: rotate(-4deg); }
+      75% { transform: rotate(10deg); }
+      90% { transform: rotate(0deg); }
+    }
+    @keyframes blink {
+      0%, 90%, 100% { transform: scaleY(1); }
+      95% { transform: scaleY(0.1); }
+    }
+    @keyframes bodyBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+    .wave-arm { transform-origin: 78px 55px; animation: wave 1.5s ease-in-out infinite; }
+    .left-eye, .right-eye { animation: blink 3s ease-in-out infinite; }
+    .right-eye { animation-delay: 0.1s; }
+    .bear-body { animation: bodyBounce 1.5s ease-in-out infinite; }
+  </style>
+
+  <g class="bear-body">
+    <!-- Body -->
+    <ellipse cx="60" cy="78" rx="28" ry="30" fill="white"/>
+    <ellipse cx="60" cy="82" rx="22" ry="22" fill="#F0F4F8"/>
+
+    <!-- Head -->
+    <circle cx="60" cy="42" r="26" fill="white"/>
+    <circle cx="60" cy="44" r="20" fill="#F0F4F8" opacity="0.3"/>
+
+    <!-- Ears -->
+    <circle cx="40" cy="22" r="10" fill="white"/>
+    <circle cx="40" cy="22" r="6" fill="#B0D4E8"/>
+    <circle cx="80" cy="22" r="10" fill="white"/>
+    <circle cx="80" cy="22" r="6" fill="#B0D4E8"/>
+
+    <!-- Face -->
+    <g class="left-eye" transform-origin="50 38">
+      <circle cx="50" cy="38" r="3.5" fill="#2D3748"/>
+      <circle cx="51.2" cy="36.8" r="1.2" fill="white"/>
+    </g>
+    <g class="right-eye" transform-origin="70 38">
+      <circle cx="70" cy="38" r="3.5" fill="#2D3748"/>
+      <circle cx="71.2" cy="36.8" r="1.2" fill="white"/>
+    </g>
+
+    <!-- Nose -->
+    <ellipse cx="60" cy="46" rx="4" ry="3" fill="#2D3748"/>
+    <ellipse cx="59" cy="45" rx="1.5" ry="1" fill="#4A5568"/>
+
+    <!-- Smile -->
+    <path d="M54 50 Q60 56 66 50" stroke="#2D3748" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+
+    <!-- Blush -->
+    <ellipse cx="46" cy="48" rx="4" ry="2.5" fill="#FFB5B5" opacity="0.5"/>
+    <ellipse cx="74" cy="48" rx="4" ry="2.5" fill="#FFB5B5" opacity="0.5"/>
+
+    <!-- Left arm (static) -->
+    <path d="M34 65 Q22 70 26 82" stroke="white" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <circle cx="26" cy="82" r="6" fill="white"/>
+
+    <!-- Feet -->
+    <ellipse cx="48" cy="106" rx="12" ry="6" fill="white"/>
+    <ellipse cx="72" cy="106" rx="12" ry="6" fill="white"/>
+
+    <!-- Snowflake on belly -->
+    <g transform="translate(60,80)" opacity="0.3">
+      <line x1="0" y1="-8" x2="0" y2="8" stroke="#29B5E8" stroke-width="1.5"/>
+      <line x1="-7" y1="-4" x2="7" y2="4" stroke="#29B5E8" stroke-width="1.5"/>
+      <line x1="-7" y1="4" x2="7" y2="-4" stroke="#29B5E8" stroke-width="1.5"/>
+    </g>
+  </g>
+
+  <!-- Right arm (waving) -->
+  <g class="wave-arm">
+    <path d="M86 60 Q98 48 94 34" stroke="white" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <circle cx="94" cy="34" r="6" fill="white"/>
+  </g>
+</svg>

@@ -1,321 +1,238 @@
-# Super Mario SPCS Telemetry - Complete Setup Guide
+# 🍄 Super Mario SPCS Telemetry
 
-> Real-time game telemetry from a containerized Super Mario Bros running on Snowpark Container Services (SPCS), with an interactive Streamlit dashboard in Snowsight.
-
----
-
-## Table of Contents
-
-1. [Architecture Overview](#architecture-overview)
-2. [Prerequisites](#prerequisites)
-3. [Project Structure](#project-structure)
-4. [Step 1: Infrastructure Setup](#step-1-infrastructure-setup)
-5. [Step 2: Build & Push Docker Image](#step-2-build--push-docker-image)
-6. [Step 3: Deploy SPCS Service](#step-3-deploy-spcs-service)
-7. [Step 4: Create Analytics Views](#step-4-create-analytics-views)
-8. [Step 5: Deploy Streamlit Dashboard](#step-5-deploy-streamlit-dashboard)
-9. [Step 6: Play & Verify](#step-6-play--verify)
-10. [Telemetry Data Model](#telemetry-data-model)
-11. [Dashboard Features](#dashboard-features)
-12. [Troubleshooting](#troubleshooting)
+> Real-time game telemetry from a containerized Super Mario Bros running on Snowpark Container Services (SPCS), with interactive dashboards, a React analytics app, Cortex AI intelligence, and a live data pipeline powered by Snowflake Interactive Tables.
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
-Browser (Player)
-    |
-    |  JavaScript (telemetry.js) hooks into game engine
-    |  Captures: game_start, death, level_win, coin, key_press, etc.
-    |
-    v
-SPCS Ingress (port 8080)
-    |
-    |  nginx reverse proxy
-    |  - GET /telemetry?d=... -> Python sidecar (port 9090)
-    |  - GET / (everything else) -> Tomcat game server (port 8888)
-    |
-    +---> Tomcat 9 (Super Mario HTML5 game)
-    |
-    +---> Python Telemetry Sidecar
-              |
-              |  OpenTelemetry SDK
-              |  - Spans (game events)
-              |  - Metrics (counters, histograms)
-              |  - Logs (structured game logs)
-              |
-              v
-         OTLP gRPC Exporter -> SPCS Event Table
-                                (event_db.event_sh.my_events)
-                                    |
-                                    v
-                              Analytics Views (MARIO_DB.PUBLIC)
-                                    |
-                                    v
-                              Streamlit Dashboard (Snowsight)
+Browser (Player — authenticated via SPCS ingress)
+    │
+    │  telemetry.js — hooks game engine, sends player_name + events
+    │
+    ▼
+SPCS Ingress (https://ei53mb-sfseeurope-eu-demo200.snowflakecomputing.app)
+    │  Injects: Sf-Context-Current-User header
+    │
+    ▼
+nginx (port 8080)
+    ├── GET /telemetry?d=...  ──► Python Sidecar (port 9090)
+    ├── GET /whoami           ──► Python Sidecar (returns player name)
+    └── GET /                 ──► Tomcat (Super Mario HTML5 game, port 8888)
+                                        │
+                              Python Sidecar
+                                        │  OpenTelemetry OTLP gRPC
+                                        ▼
+                              SPCS Event Table (event_db.event_sh.my_events)
+                                        │
+                              Dynamic Interactive Tables (DIS_MARIO.PUBLIC.*)
+                                        │
+                    ┌───────────────────┼───────────────────┐
+                    ▼                   ▼                   ▼
+             Streamlit SiS        React App           Cortex Agent
+          (MARIO_TELEMETRY_    (Next.js 16, JWT)   (MARIO_INTELLIGENCE)
+            DASHBOARD)                                     │
+                                                    Semantic View
+                                              (DIS_MARIO.PUBLIC.MARIO_TELEMETRY)
 ```
-
-### Key Design Decisions
-
-- **Tracking pixel pattern**: Browser sends telemetry via `GET /telemetry?d=<json>` using an Image pixel. This avoids CORS issues and works even when SPCS blocks certain POST requests.
-- **Exact nginx location match**: `location = /telemetry` prevents the route from catching requests to `/telemetry.js`.
-- **Bundled jQuery**: External CDN URLs are blocked by SPCS egress rules, so `jquery.min.js` is bundled locally.
-- **Platform metrics groups**: `system`, `network`, `storage` are enabled in the service spec to get container CPU, memory, disk, and network telemetry.
-
----
-
-## Prerequisites
-
-- Snowflake account with ACCOUNTADMIN role
-- Docker Desktop (for building the container image)
-- Snowflake CLI (`snow`) or `uvx --from snowflake-cli` for Streamlit deployment
-- A configured Snowflake CLI connection (e.g., `eu_demo200`)
 
 ---
 
 ## Project Structure
 
 ```
-mario-spcs/                       # Container application
-  Dockerfile                      # Multi-stage build: game + telemetry
-  nginx.conf                      # Reverse proxy routing
-  telemetry_sidecar.py            # Python OpenTelemetry collector
-  telemetry.js                    # Browser-side game event hooks
-  jquery.min.js                   # Bundled jQuery (CDN blocked in SPCS)
-  start.sh                        # Container entrypoint
-  requirements.txt                # Python dependencies (OTel SDK)
+mario-spcs/                    # Container application
+  Dockerfile                   # Multi-stage: Tomcat + nginx + Python sidecar
+  nginx.conf                   # Reverse proxy — exact location matches, header forwarding
+  telemetry_sidecar.py         # Python OTel collector (GET pixel, /whoami, player_name)
+  telemetry.js                 # Browser game hooks — sends player_name in every event
+  jquery.min.js                # Bundled jQuery (SPCS blocks external CDN)
+  start.sh                     # nginx + sidecar + Tomcat
 
-mario-streamlit/                  # Streamlit dashboard
-  streamlit_app.py                # Main dashboard application
-  pyproject.toml                  # Python dependencies
-  snowflake.yml                   # Snowflake CLI deployment config
+mario-streamlit/               # Streamlit in Snowsight dashboard
+  streamlit_app.py             # Near-realtime dashboard (10s TTL)
+  snowflake.yml                # Deploys to DIS_MARIO.PUBLIC.DIS_MARIO_TELEMETRY_DASHBOARD
 
-sql/                              # SQL setup scripts (run in order)
-  01_infrastructure.sql           # Database, warehouse, compute pool, event table
-  02_service.sql                  # SPCS service creation
-  03_analytics_views.sql          # 7 analytics views
-  04_streamlit_dashboard.sql      # Streamlit app deployment
+mario-react-app/               # Next.js analytics dashboard
+  src/                         # JWT auth locally, OAuth token in SPCS
+  public/branding/             # Snowflake logo, Cortex Code badge, polar bear SVGs
+
+semantic_view_*/               # Cortex Analyst semantic view YAML
+  creation/mario_telemetry_semantic_model.yaml
+
+sql/
+  01_infrastructure.sql        # MARIO_DB, compute pool, event table, image repo
+  02_service.sql               # SPCS service spec
+  03_analytics_views.sql       # MARIO_TOP_SCORES (last 24h), MARIO_PLAYER_STATS, etc.
+  04_streamlit_dashboard.sql   # Legacy Streamlit deployment
+  05_dis_mario_infrastructure.sql  # DIS_MARIO interactive tables, IWH, warehouses
+  06_project_showcase.sql      # Demo/showcase queries
 ```
 
 ---
 
-## Step 1: Infrastructure Setup
+## Snowflake Objects
 
-Run `sql/01_infrastructure.sql` in a Snowflake worksheet or SnowSQL:
+### Databases
+| Database | Purpose |
+|----------|---------|
+| `MARIO_DB` | Original event views, MARIO_TELEMETRY_DASHBOARD Streamlit |
+| `DIS_MARIO` | Interactive tables, React app, Semantic View, Cortex Agent |
+| `EVENT_DB` | Raw SPCS event table (`event_db.event_sh.my_events`) |
 
-```sql
--- Creates:
---   MARIO_DB database and PUBLIC schema
---   COMPUTE_WH warehouse (X-Small)
---   EVENT_DB.EVENT_SH.MY_EVENTS event table
---   MARIO_DB.PUBLIC.MARIO_REPO image repository
---   MARIO_POOL compute pool (CPU_X64_XS, 1 node)
---   PYPI_ACCESS_INTEGRATION for Streamlit pip installs
-```
+### Compute
+| Object | Type | Details |
+|--------|------|---------|
+| `MARIO_POOL` | Compute Pool | CPU_X64_XS, 1 node, auto-resume |
+| `DIS_MARIO_IWH` | Interactive Warehouse | XSMALL, 24h auto-suspend |
+| `DIS_MARIO_WH` | Standard Warehouse | XSMALL, 60s auto-suspend |
 
-After running, note the **image repository URL** from:
-```sql
-SHOW IMAGE REPOSITORIES IN SCHEMA MARIO_DB.PUBLIC;
--- e.g.: sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo
-```
+### Interactive Tables (DIS_MARIO.PUBLIC)
+| Table | Cluster By | Purpose |
+|-------|-----------|---------|
+| `GAME_EVENTS_LIVE` | EVENT_TIME | All game span events |
+| `EVENT_TIMELINE_LIVE` | MINUTE | Event counts per minute |
+| `KEY_PRESSES_LIVE` | KEY_NAME | Key press aggregates |
+| `DEATHS_BY_LEVEL_LIVE` | LEVEL | Deaths per level |
+| `POWERUPS_LIVE` | POWERUP_TYPE | Powerup spawn counts |
+| `PLAYER_SESSIONS_LIVE` | SESSION_START | Per-player session summaries |
 
----
+All tables: `TARGET_LAG = '1 minute'`, associated with `DIS_MARIO_IWH`.
 
-## Step 2: Build & Push Docker Image
-
-From the `mario-spcs/` directory:
-
-```bash
-# 1. Login to Snowflake registry
-docker login <registry_url> -u <username>
-
-# 2. Build for linux/amd64 (required by SPCS)
-docker build --platform linux/amd64 -t supermario .
-
-# 3. Tag for Snowflake
-docker tag supermario <registry_url>/supermario:latest
-
-# 4. Push
-docker push <registry_url>/supermario:latest
-```
-
-### What the Dockerfile Does
-
-1. **Stage 1** (`pengbai/docker-supermario:latest`): Copies the game files, injects `telemetry.js`, replaces CDN jQuery with local copy.
-2. **Stage 2** (`tomcat:9.0-jdk11-openjdk`): Installs Python 3 + pip + nginx, copies telemetry sidecar, nginx config, and game files from stage 1.
-3. **Entrypoint** (`start.sh`): Reconfigures Tomcat to port 8888, starts nginx (port 8080), starts telemetry sidecar (port 9090), starts Tomcat.
-
----
-
-## Step 3: Deploy SPCS Service
-
-Run `sql/02_service.sql`:
-
-```sql
-CREATE SERVICE MARIO_DB.PUBLIC.MARIO_SERVICE
-    IN COMPUTE POOL MARIO_POOL
-    ...
-```
-
-### Service Specification Highlights
-
-| Setting | Value | Notes |
-|---------|-------|-------|
-| CPU Limit | 1 core | |
-| Memory Limit | 2 GiB | |
-| CPU Request | 500m | |
-| Memory Request | 512 MiB | |
-| Public Endpoint | port 8080 | Exposed via SPCS ingress |
-| Platform Monitor | system, network, storage | Enables 90+ metric types |
-
-After creation, get the ingress URL:
-```sql
-SHOW ENDPOINTS IN SERVICE MARIO_DB.PUBLIC.MARIO_SERVICE;
--- ingress_url: https://<hash>-<org>-<account>.snowflakecomputing.app
-```
-
----
-
-## Step 4: Create Analytics Views
-
-Run `sql/03_analytics_views.sql` to create all 7 views:
-
-| View | Purpose |
-|------|---------|
-| `MARIO_PLAYER_STATS` | Aggregated totals (games, deaths, coins, etc.) |
-| `MARIO_TOP_SCORES` | Leaderboard ranked by coins desc, time asc |
-| `MARIO_GAME_SESSIONS` | Per-session breakdown with deaths, levels, coins |
-| `MARIO_AVG_STATS` | Computed averages (playtime, coins/round, win rate) |
+### Analytics Views (MARIO_DB.PUBLIC)
+| View | Description |
+|------|-------------|
+| `MARIO_TOP_SCORES` | Leaderboard — last 24 hours only |
+| `MARIO_PLAYER_STATS` | Aggregated totals per player |
+| `MARIO_GAME_SESSIONS` | Per-session breakdown |
+| `MARIO_AVG_STATS` | Computed KPI averages |
 | `MARIO_GAME_LOGS` | Service log messages |
-| `MARIO_GAME_METRICS` | Raw metric data from all 90+ metric types |
+| `MARIO_GAME_METRICS` | Raw platform metrics |
 | `MARIO_GAME_TRACES` | Raw span/trace data |
 
+### AI & Intelligence
+| Object | Type | Details |
+|--------|------|---------|
+| `DIS_MARIO.PUBLIC.MARIO_TELEMETRY` | Semantic View | 6 tables, 2 relationships, 10 VQRs |
+| `DIS_MARIO.PUBLIC.MARIO_INTELLIGENCE` | Cortex Agent | text-to-SQL over MARIO_TELEMETRY, model: auto |
+
 ---
 
-## Step 5: Deploy Streamlit Dashboard
+## SPCS Service
 
-### Option A: Snowflake CLI (Recommended)
+**Service:** `MARIO_DB.PUBLIC.MARIO_SERVICE`  
+**Ingress:** `https://ei53mb-sfseeurope-eu-demo200.snowflakecomputing.app`  
+**Image:** `sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest`
 
-From the `mario-streamlit/` directory:
+### Container Architecture
+- **nginx** (port 8080) — SPCS ingress endpoint; routes telemetry to Python, game to Tomcat
+- **Tomcat 9** (port 8888) — serves HTML5 Mario game with injected `telemetry.js`
+- **Python Sidecar** (port 9090) — receives events, extracts player name, exports via OTel OTLP gRPC
 
+### Player Name Flow
+1. SPCS injects `Sf-Context-Current-User: <username>` header on all ingress requests
+2. nginx forwards header via `proxy_set_header`
+3. Sidecar reads header in `_get_player_name()` — falls back to browser-provided name, then `"unknown"`
+4. Browser calls `/whoami` at game init → receives player name → includes in all event payloads
+5. `player_name` stored as OTel span attribute → `record_attributes:player_name` in event table
+
+### Rebuilding & Deploying
 ```bash
-uvx --from snowflake-cli snow streamlit deploy \
-    --replace \
-    --connection <connection_name> \
-    --role ACCOUNTADMIN
+# Authenticate (avoids MFA/TOTP issues)
+snow spcs image-registry login --connection eu_demo200
+
+# Build (always use --no-cache to avoid stale layers)
+docker build --no-cache --platform linux/amd64 -t supermario ./mario-spcs/
+
+# Tag and push
+docker tag supermario sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
+docker push sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
+
+# Force service to pull new image (suspend/resume does NOT re-pull)
+snow spcs compute-pool resume MARIO_POOL --connection eu_demo200
+snow sql --role ACCOUNTADMIN -q "ALTER SERVICE MARIO_DB.PUBLIC.MARIO_SERVICE FROM SPECIFICATION $$ ... $$" --connection eu_demo200
 ```
 
-### Option B: SQL
-
-See `sql/04_streamlit_dashboard.sql` for manual stage upload and `CREATE STREAMLIT` command.
-
-### Dashboard URL
-
-After deployment:
-```
-https://app.snowflake.com/<org>/<account>/#/streamlit-apps/MARIO_DB.PUBLIC.MARIO_TELEMETRY_DASHBOARD
-```
-
----
-
-## Step 6: Play & Verify
-
-1. Open the **game** at the SPCS ingress URL
-2. Press **S** to start playing
-3. Open the **Streamlit dashboard** in Snowsight
-4. Verify telemetry flows by checking:
-
-```sql
--- Count telemetry records
-SELECT record_type, COUNT(*)
-FROM event_db.event_sh.my_events
-WHERE resource_attributes:"snow.service.name"::STRING = 'MARIO_SERVICE'
-GROUP BY 1;
-
--- Check latest events
-SELECT timestamp, record:name::STRING AS event
-FROM event_db.event_sh.my_events
-WHERE resource_attributes:"snow.service.name"::STRING = 'MARIO_SERVICE'
-  AND record_type = 'SPAN'
-ORDER BY timestamp DESC
-LIMIT 10;
-```
+> **Key learnings:**
+> - Always use `--no-cache` — Docker silently reuses stale cached layers
+> - `suspend/resume` does NOT pull a new image; use `ALTER SERVICE FROM SPECIFICATION`
+> - `snow spcs image-registry login` handles MFA/TOTP automatically
 
 ---
 
 ## Telemetry Data Model
 
-### Game Events (Spans)
+### Game Events (Spans → `record_attributes`)
+| Event | Key Attributes |
+|-------|---------------|
+| `mario.game_start` | lives, player_name |
+| `mario.level_start` | level, difficulty, type, lives, coins, player_name |
+| `mario.death` | level, lives, coins, large, fire, player_name |
+| `mario.level_win` | level, lives, coins, time_left, player_name |
+| `mario.game_over` | level, coins, session_duration, player_name |
+| `mario.game_win` | session_duration, player_name |
+| `mario.coin` | total_coins, player_name |
+| `mario.key_press` | key, player_name |
+| `mario.powerup_spawn` | type, level, player_name |
+| `mario.session_end` | session_duration, player_name |
 
-| Event | Attributes | When |
-|-------|-----------|------|
-| `mario.game_start` | lives | Player presses S on title screen |
-| `mario.level_start` | level, difficulty, type, lives, coins | Level begins loading |
-| `mario.death` | level, lives, coins, large, fire | Mario dies |
-| `mario.level_win` | level, lives, coins, time_left | Level flag reached |
-| `mario.game_over` | level, coins, session_duration | All lives lost |
-| `mario.game_win` | session_duration | Final level completed |
-| `mario.coin` | total_coins | Coin collected |
-| `mario.powerup_spawn` | type, level | Powerup block hit |
-| `mario.key_press` | key | Player key press (throttled 500ms) |
-| `mario.session_end` | session_duration | Browser tab closing |
-
-### Platform Metrics (SPCS Native)
-
-| Metric | Unit | Description |
-|--------|------|-------------|
-| `container.cpu.usage` | CPU cores | Container CPU utilization |
-| `container.memory.usage` | bytes | Container memory usage |
-| `storage.used` | bytes | Disk storage used |
-| `storage.free` | bytes | Disk storage available |
-| `system.network.io` | bytes | Network I/O (with direction: receive/transmit) |
-| `network.ingress.connections.active` | count | Active ingress connections |
-| `network.ingress.cps` | count/sec | Connections per second |
-
-### Derived Metrics (Computed in Dashboard)
-
-| Metric | Derivation |
-|--------|-----------|
-| Disk IOPS | `ABS(storage_delta) / elapsed_seconds / 4096` |
-| I/O Throughput | `ABS(network_delta) / elapsed_seconds / 1MB` |
-| Avg Latency | `elapsed_seconds * 1000 / sample_count` |
+### Platform Metrics (SPCS native — `platformMonitor.metricConfig`)
+`container.cpu.usage`, `container.memory.usage`, `storage.used`, `storage.free`, `system.network.io`, `network.ingress.connections.active`
 
 ---
 
-## Dashboard Features
+## Dashboards
 
-### KPI Rows
-- **Row 1 (Totals)**: Total Games, Deaths, Coins, Level Attempts, Level Wins, Powerups, Key Presses
-- **Row 2 (Averages)**: Avg Playtime, Sec/Death, Coins/Round, Avg Level Time, Avg Attempts, Win Rate, Keys/Game
+### Streamlit — `MARIO_DB.PUBLIC.MARIO_TELEMETRY_DASHBOARD`
+Legacy dashboard backed by raw event table views.  
+Tabs: **Leaderboard** (top scores, last 24h) · Event Timeline · Deaths & Levels · Controls & Powerups · Platform Metrics
 
-### Tabs
-1. **Leaderboard**: Top scores table + game sessions table (latest first)
-2. **Event Timeline**: Stacked area chart of game events over time
-3. **Deaths & Levels**: Deaths by level bar chart + powerups table
-4. **Controls & Powerups**: Key press distribution bar chart
-5. **Platform Metrics** (with time range selector: 15m / 1h / 6h / 24h / 7d / all):
-   - CPU Usage (avg + max %)
-   - Memory Usage (avg + max MB)
-   - Disk Storage (avg + max MB)
-   - Estimated Disk IOPS (4K blocks)
-   - I/O Throughput (MB/s) & Latency (ms)
-   - Network Ingress (connections)
-   - Network I/O (RX + TX, avg + max MB)
+### Streamlit — `DIS_MARIO.PUBLIC.DIS_MARIO_TELEMETRY_DASHBOARD`
+Modern dashboard backed by Interactive Tables (near-realtime, 10s TTL).  
+Player dropdown filter · 6 KPI cards · 5 analytics tabs
 
-### Raw Event Log
-- Expandable section showing latest 500 raw game events
+### React App — `mario-react-app/`
+Next.js 16.2.3 dashboard, port 3456 locally.  
+JWT auth locally (`~/.snowflake/keys/cloetta/rsa_key.p8`), OAuth token in SPCS.  
+Tabs: Overview · Live Events · Analytics · Data Pipeline (animated flow)
 
 ---
 
-## Troubleshooting
+## Quick Start
 
-| Issue | Solution |
-|-------|---------|
-| `telemetry.js` not loading | Check nginx uses `location = /telemetry` (exact match), not `location /telemetry` (prefix) |
-| No telemetry data | Check service logs: `SELECT SYSTEM$GET_SERVICE_LOGS(...)`. Verify OTLP exporter can reach event table. |
-| Compute pool full | Check `SHOW COMPUTE POOLS` for capacity. Use `ALTER COMPUTE POOL ... MAX_NODES = 2` if needed. |
-| CDN scripts failing | SPCS blocks external egress. Bundle JS dependencies in Docker image. |
-| Streamlit deploy fails | Ensure `compute_pool` and `PYPI_ACCESS_INTEGRATION` exist. Use `runtime_name: SYSTEM$ST_CONTAINER_RUNTIME_PY3_11`. |
-| Platform metrics empty | Verify `platformMonitor.metricConfig.groups` includes `system`, `network`, `storage` in service spec. |
-| CLI version too old | Use `uvx --from snowflake-cli snow ...` to run latest CLI without installing. |
+### 1. Start SPCS Service
+```bash
+snow spcs compute-pool resume MARIO_POOL --connection eu_demo200
+snow spcs service resume MARIO_DB.PUBLIC.MARIO_SERVICE --connection eu_demo200
+```
+
+### 2. Start React App (local dev)
+```bash
+PORT=3456 npm run dev --prefix mario-react-app
+```
+
+### 3. Deploy Streamlit
+```bash
+uvx --from snowflake-cli snow streamlit deploy --replace --connection eu_demo200 --role ACCOUNTADMIN
+```
+
+### 4. Suspend Everything
+```bash
+snow spcs service suspend MARIO_DB.PUBLIC.MARIO_SERVICE --connection eu_demo200
+snow spcs compute-pool suspend MARIO_POOL --connection eu_demo200
+```
+
+---
+
+## Key Design Decisions
+
+| Decision | Reason |
+|----------|--------|
+| GET tracking pixel for telemetry | SPCS ingress blocks POST from browser |
+| `location = /telemetry` (exact match) | Prefix match catches `/telemetry.js` |
+| Bundled `jquery.min.js` | SPCS egress blocks external CDN URLs |
+| Browser sends `player_name` in every event | Fallback when `Sf-Context-Current-User` header unavailable |
+| `--no-cache` Docker builds | Cache silently reuses stale layers |
+| `ALTER SERVICE FROM SPECIFICATION` to update | `suspend/resume` does not re-pull image |
+| Interactive Tables + IWH | Sub-second query latency for dashboard polling |

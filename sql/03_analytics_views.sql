@@ -13,6 +13,7 @@ USE SCHEMA PUBLIC;
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE VIEW MARIO_DB.PUBLIC.MARIO_PLAYER_STATS AS
 SELECT
+    record_attributes:player_name::STRING AS player_name,
     COUNT(CASE WHEN record:name::STRING = 'mario.game_start' THEN 1 END) AS total_games,
     COUNT(CASE WHEN record:name::STRING = 'mario.death' THEN 1 END) AS total_deaths,
     COUNT(CASE WHEN record:name::STRING = 'mario.coin' THEN 1 END) AS total_coins_collected,
@@ -26,7 +27,8 @@ SELECT
 FROM event_db.event_sh.my_events
 WHERE resource_attributes:"snow.service.name"::STRING = 'MARIO_SERVICE'
   AND record_type = 'SPAN'
-  AND record:name::STRING LIKE 'mario.%';
+  AND record:name::STRING LIKE 'mario.%'
+GROUP BY 1;
 
 -- -----------------------------------------------------------------------------
 -- 2. MARIO_TOP_SCORES - Leaderboard ranked by coins (desc) and time (asc)
@@ -34,6 +36,7 @@ WHERE resource_attributes:"snow.service.name"::STRING = 'MARIO_SERVICE'
 CREATE OR REPLACE VIEW MARIO_DB.PUBLIC.MARIO_TOP_SCORES AS
 SELECT
     ROW_NUMBER() OVER (ORDER BY record_attributes:coins::INT DESC, record_attributes:session_duration::FLOAT ASC) AS rank,
+    record_attributes:player_name::STRING AS player_name,
     timestamp AS game_time,
     record_attributes:level::STRING AS final_level,
     record_attributes:coins::INT AS coins,
@@ -42,7 +45,8 @@ SELECT
 FROM event_db.event_sh.my_events
 WHERE resource_attributes:"snow.service.name"::STRING = 'MARIO_SERVICE'
   AND record_type = 'SPAN'
-  AND record:name::STRING = 'mario.game_over';
+  AND record:name::STRING = 'mario.game_over'
+  AND timestamp >= DATEADD(DAY, -1, CURRENT_TIMESTAMP());
 
 -- -----------------------------------------------------------------------------
 -- 3. MARIO_GAME_SESSIONS - Per-session breakdown with deaths, levels, coins
@@ -51,6 +55,7 @@ CREATE OR REPLACE VIEW MARIO_DB.PUBLIC.MARIO_GAME_SESSIONS AS
 WITH game_starts AS (
     SELECT
         timestamp AS session_start,
+        record_attributes:player_name::STRING AS player_name,
         record_attributes:lives::INT AS starting_lives,
         ROW_NUMBER() OVER (ORDER BY timestamp) AS session_id,
         LEAD(timestamp) OVER (ORDER BY timestamp) AS next_session_start
@@ -62,6 +67,7 @@ WITH game_starts AS (
 game_overs AS (
     SELECT
         timestamp AS session_end,
+        record_attributes:player_name::STRING AS player_name,
         record_attributes:level::STRING AS final_level,
         record_attributes:coins::INT AS final_coins,
         record_attributes:session_duration::FLOAT AS duration_seconds
@@ -74,6 +80,7 @@ matched AS (
     SELECT
         gs.session_id,
         gs.session_start,
+        gs.player_name,
         gs.starting_lives,
         gs.next_session_start,
         go.session_end,
@@ -116,6 +123,7 @@ levels_per_session AS (
 )
 SELECT
     s.session_id,
+    s.player_name,
     s.session_start,
     s.session_end,
     ROUND(s.duration_seconds, 1) AS duration_seconds,
@@ -179,6 +187,7 @@ SELECT
     timestamp,
     start_timestamp,
     record:name::STRING AS span_name,
+    record_attributes:player_name::STRING AS player_name,
     record_attributes,
     trace:"trace_id"::STRING AS trace_id,
     trace:"span_id"::STRING AS span_id

@@ -1,0 +1,93 @@
+{
+  "json_proto": {
+    "name": "MARIO_TELEMETRY",
+    "database": "DIS_MARIO",
+    "schema": "PUBLIC",
+    "tables": [
+      {
+        "database": "DIS_MARIO",
+        "schema": "PUBLIC",
+        "table": "GAME_EVENTS_LIVE",
+        "columnNames": ["TIMESTAMP", "EVENT_TYPE", "LEVEL", "COINS", "LIVES", "KEY_NAME", "POWERUP_TYPE", "DURATION", "SESSION_ID"]
+      },
+      {
+        "database": "DIS_MARIO",
+        "schema": "PUBLIC",
+        "table": "EVENT_TIMELINE_LIVE",
+        "columnNames": ["MINUTE", "EVENT_TYPE", "EVENT_COUNT"]
+      },
+      {
+        "database": "DIS_MARIO",
+        "schema": "PUBLIC",
+        "table": "KEY_PRESSES_LIVE",
+        "columnNames": ["KEY_NAME", "PRESSES"]
+      },
+      {
+        "database": "DIS_MARIO",
+        "schema": "PUBLIC",
+        "table": "DEATHS_BY_LEVEL_LIVE",
+        "columnNames": ["LEVEL", "DEATHS"]
+      },
+      {
+        "database": "DIS_MARIO",
+        "schema": "PUBLIC",
+        "table": "POWERUPS_LIVE",
+        "columnNames": ["POWERUP_TYPE", "LEVEL", "COUNT"]
+      },
+      {
+        "database": "DIS_MARIO",
+        "schema": "PUBLIC",
+        "table": "PLAYER_SESSIONS_LIVE",
+        "columnNames": ["SESSION_ID", "MAX_COINS", "HIGHEST_LEVEL", "DEATHS", "LEVELS_WON", "COINS_COLLECTED", "SESSION_START", "SESSION_END"]
+      }
+    ],
+    "sqlSource": {
+      "queries": [
+        {
+          "sqlText": "SELECT EVENT_TYPE, COUNT(*) AS EVENT_COUNT FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE GROUP BY EVENT_TYPE ORDER BY EVENT_COUNT DESC",
+          "correspondingQuestion": "How many events are there for each event type?"
+        },
+        {
+          "sqlText": "SELECT LEVEL, DEATHS FROM DIS_MARIO.PUBLIC.DEATHS_BY_LEVEL_LIVE ORDER BY DEATHS DESC",
+          "correspondingQuestion": "Which level has the most deaths?"
+        },
+        {
+          "sqlText": "SELECT KEY_NAME, PRESSES FROM DIS_MARIO.PUBLIC.KEY_PRESSES_LIVE ORDER BY PRESSES DESC",
+          "correspondingQuestion": "What is the most pressed key?"
+        },
+        {
+          "sqlText": "SELECT POWERUP_TYPE, SUM(COUNT) AS TOTAL FROM DIS_MARIO.PUBLIC.POWERUPS_LIVE GROUP BY POWERUP_TYPE ORDER BY TOTAL DESC",
+          "correspondingQuestion": "What are the most collected powerup types?"
+        },
+        {
+          "sqlText": "SELECT SESSION_ID, MAX_COINS, HIGHEST_LEVEL, DEATHS, LEVELS_WON, COINS_COLLECTED FROM DIS_MARIO.PUBLIC.PLAYER_SESSIONS_LIVE ORDER BY COINS_COLLECTED DESC",
+          "correspondingQuestion": "Show me the player session with the most coins collected"
+        },
+        {
+          "sqlText": "SELECT DATE_TRUNC('HOUR', TIMESTAMP) AS HOUR, COUNT(*) AS EVENTS FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE GROUP BY HOUR ORDER BY HOUR",
+          "correspondingQuestion": "How many game events occurred per hour?"
+        },
+        {
+          "sqlText": "SELECT EVENT_TYPE, MINUTE, EVENT_COUNT FROM DIS_MARIO.PUBLIC.EVENT_TIMELINE_LIVE ORDER BY MINUTE DESC LIMIT 20",
+          "correspondingQuestion": "Show the most recent event timeline"
+        },
+        {
+          "sqlText": "SELECT LEVEL, POWERUP_TYPE, COUNT FROM DIS_MARIO.PUBLIC.POWERUPS_LIVE ORDER BY LEVEL, COUNT DESC",
+          "correspondingQuestion": "What powerups were collected on each level?"
+        },
+        {
+          "sqlText": "SELECT COUNT(*) AS TOTAL_EVENTS, COUNT(DISTINCT SESSION_ID) AS UNIQUE_SESSIONS, COUNT(DISTINCT EVENT_TYPE) AS EVENT_TYPES FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE",
+          "correspondingQuestion": "Give me an overview of total events, sessions, and event types"
+        },
+        {
+          "sqlText": "SELECT SESSION_ID, DEATHS, LEVELS_WON, COINS_COLLECTED, TIMEDIFF('MINUTE', SESSION_START, SESSION_END) AS DURATION_MINUTES FROM DIS_MARIO.PUBLIC.PLAYER_SESSIONS_LIVE",
+          "correspondingQuestion": "How long did each session last and what was achieved?"
+        }
+      ]
+    },
+    "semanticDescription": "Telemetry analytics model for Super Mario Bros game running on Snowpark Container Services (SPCS). Tracks real-time game events, player sessions, deaths by level, key presses, powerup collection, and event timelines collected via OpenTelemetry instrumentation.",
+    "metadata": {
+      "warehouse": "AGENTIC_ANALYTICS_VHOL_WH"
+    }
+  }
+}

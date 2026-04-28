@@ -59,6 +59,7 @@ class TelemetryHandler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length)
             try:
                 data = json.loads(body)
+                data["player_name"] = self._get_player_name()
                 self._process_event(data)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -89,14 +90,33 @@ class TelemetryHandler(BaseHTTPRequestHandler):
 
     PIXEL_GIF = base64.b64decode("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
 
+    def _get_player_name(self):
+        user = self.headers.get("Sf-Context-Current-User", "").strip()
+        if not user:
+            user = self.headers.get("sf-context-current-user", "").strip()
+        result = user or None
+        logger.info(f"PLAYER_NAME from header: {result!r}")
+        return result
+
     def do_GET(self):
         parsed = urlparse(self.path)
-        if parsed.path.startswith("/telemetry"):
+        if parsed.path == "/whoami":
+            player = self._get_player_name() or "unknown"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store, no-cache")
+            self.end_headers()
+            self.wfile.write(json.dumps({"player_name": player}).encode())
+        elif parsed.path.startswith("/telemetry"):
+            header_player = self._get_player_name()
             params = parse_qs(parsed.query)
             d = params.get("d", [None])[0]
             if d:
                 try:
                     data = json.loads(unquote(d))
+                    browser_player = data.get("player_name", "") or ""
+                    data["player_name"] = header_player or browser_player or "unknown"
+                    logger.info(f"EVENT {data.get('event')} player_name={data['player_name']!r} (header={header_player!r}, browser={browser_player!r})")
                     self._process_event(data)
                 except Exception as e:
                     logger.error(f"Error processing GET telemetry: {e}")
