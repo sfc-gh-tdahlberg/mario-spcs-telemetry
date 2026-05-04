@@ -199,6 +199,31 @@ Tabs: Overview · Live Events · Analytics · Data Pipeline (animated flow)
 
 ---
 
+## Demo Users
+
+Mario-themed usernames for multi-player testing:
+
+```
+mario, luigi, peach, daisy, toad, toadette, yoshi, birdo,
+wario, waluigi, bowser, bowserjr, rosalina, donkeykong,
+diddykong, koopa, kamek, lakitu, boo, goomba
+```
+
+---
+
+## Presentation
+
+Generated from `presentation_template/presetation_template.pptx` using Snowflake brand colors:
+
+```bash
+python3 build_presentation.py
+# Output: Super_Mario_SPCS_Telemetry_Presentation.pptx (12 slides, 20 min)
+```
+
+Slides: Cover → Agenda → What We Built → Architecture → Container Stack → Player Identity → Real-time Pipeline → Dashboards & AI → Snowflake Features → Live Demo → Key Learnings → Thank You
+
+---
+
 ## Quick Start
 
 ### 1. Start SPCS Service
@@ -209,7 +234,7 @@ snow spcs service resume MARIO_DB.PUBLIC.MARIO_SERVICE --connection eu_demo200
 
 ### 2. Start React App (local dev)
 ```bash
-PORT=3456 npm run dev --prefix mario-react-app
+SNOWFLAKE_CONNECTION_NAME=eu_demo200 npm run dev --prefix mario-react-app -- -p 3456
 ```
 
 ### 3. Deploy Streamlit
