@@ -30,6 +30,7 @@ interface MemoryRow { MINUTE: string; AVG_MEMORY_MB: number; MAX_MEMORY_MB: numb
 interface NetworkRow { MINUTE: string; ACTIVE_CONNECTIONS: number; CONNECTIONS_PER_SEC: number; }
 interface ThroughputRow { MINUTE: string; SPANS_STARTED: number; SPANS_LIVE: number; }
 interface LogRow { MINUTE: string; LOG_COUNT: number; ERROR_COUNT: number; WARN_COUNT: number; }
+interface LeaderboardRow { RANK: number; PLAYER_NAME: string; GAME_TIME: string; FINAL_LEVEL: string; COINS: number; DURATION: number; }
 
 function eventIcon(type: string) {
   const map: Record<string, string> = {
@@ -90,6 +91,7 @@ export default function MarioDashboard() {
   const [throughput, setThroughput] = useState<ThroughputRow[]>([]);
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [players, setPlayers] = useState<PlayerRow[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<string>("");
   const [metricsRange, setMetricsRange] = useState("360");
   const [activeTab, setActiveTab] = useState("overview");
@@ -102,7 +104,7 @@ export default function MarioDashboard() {
       const nc = { cache: "no-store" as RequestCache };
       const cb = `_t=${Date.now()}`;
       const sep = (s: string) => s.includes("?") ? "&" : "?";
-      const [sRes, eRes, tRes, dRes, kRes, pRes, cpuRes, memRes, netRes, thruRes, logRes, plRes] = await Promise.all([
+      const [sRes, eRes, tRes, dRes, kRes, pRes, cpuRes, memRes, netRes, thruRes, logRes, plRes, lbRes] = await Promise.all([
         fetch(`/api/stats${pq}${sep(`/api/stats${pq}`)}${cb}`, nc), fetch(`/api/events${pq}${sep(`/api/events${pq}`)}${cb}`, nc), fetch(`/api/timeline?${cb}`, nc),
         fetch(`/api/deaths${pq}${sep(`/api/deaths${pq}`)}${cb}`, nc), fetch(`/api/keys${pq}${sep(`/api/keys${pq}`)}${cb}`, nc), fetch(`/api/powerups${pq}${sep(`/api/powerups${pq}`)}${cb}`, nc),
         fetch(`/api/metrics/cpu?minutes=${metricsRange}&${cb}`, nc),
@@ -111,11 +113,12 @@ export default function MarioDashboard() {
         fetch(`/api/metrics/throughput?minutes=${metricsRange}&${cb}`, nc),
         fetch(`/api/metrics/logs?minutes=${metricsRange}&${cb}`, nc),
         fetch(`/api/players?${cb}`, nc),
+        fetch(`/api/leaderboard?${cb}`, nc),
       ]);
-      const [s, e, t, d, k, p, cpuD, memD, netD, thruD, logD, plD] = await Promise.all([
+      const [s, e, t, d, k, p, cpuD, memD, netD, thruD, logD, plD, lbD] = await Promise.all([
         sRes.json(), eRes.json(), tRes.json(), dRes.json(), kRes.json(), pRes.json(),
         cpuRes.json(), memRes.json(), netRes.json(), thruRes.json(), logRes.json(),
-        plRes.json(),
+        plRes.json(), lbRes.json(),
       ]);
       setStats(s);
       setEvents(Array.isArray(e) ? e : []);
@@ -129,6 +132,7 @@ export default function MarioDashboard() {
       setThroughput(Array.isArray(thruD) ? thruD : []);
       setLogs(Array.isArray(logD) ? logD : []);
       setPlayers(Array.isArray(plD) ? plD : []);
+      setLeaderboard(Array.isArray(lbD) ? lbD : []);
       setLastRefresh(new Date());
       setLoading(false);
     } catch (err) {
@@ -159,9 +163,10 @@ export default function MarioDashboard() {
   const allEventTypes = [...new Set(timeline.map(r => r.EVENT_TYPE))];
 
   const tabs = [
+    { id: "leaderboard", label: "Leaderboard", icon: <Trophy size={16} /> },
     { id: "overview", label: "Overview", icon: <Gamepad2 size={16} /> },
     { id: "events", label: "Live Events", icon: <Zap size={16} /> },
-    { id: "analytics", label: "Analytics", icon: <Trophy size={16} /> },
+    { id: "analytics", label: "Analytics", icon: <BarChart3 size={16} /> },
     { id: "pipeline", label: "Data Pipeline", icon: <Layers size={16} /> },
     { id: "platform", label: "SPCS Metrics", icon: <Cpu size={16} /> },
   ];
@@ -232,6 +237,48 @@ export default function MarioDashboard() {
           </button>
         ))}
       </div>
+
+      {activeTab === "leaderboard" && (
+        <div className="space-y-4">
+          <div className="mario-card p-4">
+            <h3 className="text-sm font-semibold mb-3 text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <Trophy size={16} className="text-yellow-400" /> Leaderboard — Last 24 Hours
+            </h3>
+            {leaderboard.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No games completed in the last 24 hours. Play Mario to get on the board!</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-700 text-gray-400">
+                      <th className="text-left py-2 px-3">#</th>
+                      <th className="text-left py-2 px-3">Player</th>
+                      <th className="text-left py-2 px-3">Level</th>
+                      <th className="text-right py-2 px-3">Coins</th>
+                      <th className="text-right py-2 px-3">Duration</th>
+                      <th className="text-left py-2 px-3">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboard.map((row) => (
+                      <tr key={`${row.RANK}-${row.GAME_TIME}`} className={`border-b border-gray-800 ${row.RANK <= 3 ? "bg-yellow-900/10" : ""}`}>
+                        <td className="py-2 px-3 font-bold" style={{ color: row.RANK === 1 ? "#FFD700" : row.RANK === 2 ? "#C0C0C0" : row.RANK === 3 ? "#CD7F32" : "#9ca3af" }}>
+                          {row.RANK === 1 ? "🥇" : row.RANK === 2 ? "🥈" : row.RANK === 3 ? "🥉" : row.RANK}
+                        </td>
+                        <td className="py-2 px-3 font-semibold text-white">{row.PLAYER_NAME}</td>
+                        <td className="py-2 px-3 text-gray-300">{row.FINAL_LEVEL}</td>
+                        <td className="py-2 px-3 text-right text-yellow-400 font-bold">{row.COINS}</td>
+                        <td className="py-2 px-3 text-right text-gray-300">{row.DURATION}s</td>
+                        <td className="py-2 px-3 text-gray-500 text-xs">{new Date(row.GAME_TIME).toLocaleTimeString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {activeTab === "overview" && stats && (
         <>

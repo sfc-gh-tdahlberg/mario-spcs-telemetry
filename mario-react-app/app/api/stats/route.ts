@@ -20,7 +20,7 @@ export async function GET(request: Request) {
         (SELECT COUNT(*) FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE WHERE EVENT_TYPE='mario.coin' ${playerFilter}) AS TOTAL_COINS,
         (SELECT COUNT(*) FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE WHERE EVENT_TYPE='mario.level_win' ${playerFilter}) AS TOTAL_LEVELS_WON,
         (SELECT SUM(COUNT) FROM DIS_MARIO.PUBLIC.POWERUPS_LIVE ${playerFilterWhere}) AS TOTAL_POWERUPS,
-        (SELECT COUNT(*) FROM DIS_MARIO.PUBLIC.PLAYER_SESSIONS_LIVE ${playerFilterWhere}) AS TOTAL_SESSIONS
+        (SELECT COUNT(*) FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE WHERE EVENT_TYPE='mario.game_start' ${playerFilter}) AS TOTAL_SESSIONS
     `);
     return NextResponse.json(totals);
   } catch (error) {

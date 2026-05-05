@@ -14,7 +14,7 @@ USE SCHEMA PUBLIC;
 -- From the /mario-spcs/ directory containing the Dockerfile:
 --
 --   # Authenticate to Snowflake image registry
---   docker login sfseeurope-eu-demo200.registry.snowflakecomputing.com \
+--   docker login <YOUR_ACCOUNT>.registry.snowflakecomputing.com \
 --       -u <username>
 --
 --   # Build the image
@@ -22,11 +22,11 @@ USE SCHEMA PUBLIC;
 --
 --   # Tag for Snowflake registry
 --   docker tag supermario \
---       sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
+--       <YOUR_ACCOUNT>.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
 --
 --   # Push to Snowflake
 --   docker push \
---       sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
+--       <YOUR_ACCOUNT>.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
 -- =============================================================================
 
 -- =============================================================================

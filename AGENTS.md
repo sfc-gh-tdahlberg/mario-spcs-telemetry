@@ -6,9 +6,9 @@ Real-time game telemetry platform: Super Mario Bros running on Snowpark Containe
 
 ## Snowflake Connection
 
-- **Connection name:** `eu_demo200`
-- **Account:** SFSEEUROPE-EU_DEMO200
-- **User:** thomas
+- **Connection name:** `<YOUR_CONNECTION>` (set in ~/.snowflake/connections.toml)
+- **Account:** <YOUR_ACCOUNT>
+- **User:** <YOUR_USER>
 - **Auth:** SNOWFLAKE_JWT (keypair)
 - **Role:** ACCOUNTADMIN
 
@@ -28,8 +28,8 @@ Real-time game telemetry platform: Super Mario Bros running on Snowpark Containe
 
 ## URLs
 
-- **Game:** https://ei53mb-sfseeurope-eu-demo200.snowflakecomputing.app
-- **Docker registry:** sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
+- **Game:** https://<INGRESS_HASH>-<YOUR_ACCOUNT>.snowflakecomputing.app (run `SHOW ENDPOINTS IN SERVICE` to find)
+- **Docker registry:** <YOUR_ACCOUNT>.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
 - **React app (local):** http://localhost:3456
 - **GitHub:** https://github.com/sfc-gh-tdahlberg/mario-spcs-telemetry
 
@@ -51,15 +51,15 @@ ALTER COMPUTE POOL MARIO_POOL SUSPEND;
 
 ### Start React app
 ```bash
-SNOWFLAKE_CONNECTION_NAME=eu_demo200 npm run dev --prefix mario-react-app -- -p 3456
+SNOWFLAKE_CONNECTION_NAME=<YOUR_CONNECTION> npm run dev --prefix mario-react-app -- -p 3456
 ```
 
 ### Rebuild Docker image
 ```bash
-snow spcs image-registry login --connection eu_demo200
+snow spcs image-registry login --connection <YOUR_CONNECTION>
 docker build --no-cache --platform linux/amd64 -t supermario ./mario-spcs/
-docker tag supermario sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
-docker push sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
+docker tag supermario <YOUR_ACCOUNT>.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
+docker push <YOUR_ACCOUNT>.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
 ```
 
 ### Force service to pull new image

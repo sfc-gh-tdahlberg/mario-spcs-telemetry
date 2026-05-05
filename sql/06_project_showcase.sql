@@ -60,7 +60,7 @@ SELECT SYSTEM$GET_SERVICE_STATUS('MARIO_DB.PUBLIC.MARIO_SERVICE') AS service_sta
 --   • Tomcat (port 8888) — Java Super Mario Bros game server
 --   • Python sidecar (port 9090) — receives telemetry, forwards via OTel gRPC
 --
--- Public endpoint: https://ei53mb-sfseeurope-eu-demo200.snowflakecomputing.app
+-- Public endpoint: https://<INGRESS_HASH>-<YOUR_ACCOUNT>.snowflakecomputing.app
 
 SHOW SERVICES IN SCHEMA MARIO_DB.PUBLIC;
 SHOW ENDPOINTS IN SERVICE MARIO_DB.PUBLIC.MARIO_SERVICE;
@@ -70,7 +70,7 @@ SHOW ENDPOINTS IN SERVICE MARIO_DB.PUBLIC.MARIO_SERVICE;
 -- 5. IMAGE REPOSITORY
 -- =====================================================================================
 -- MARIO_REPO — Stores the Docker image for the game container
--- Image: sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
+-- Image: <YOUR_ACCOUNT>.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
 
 SHOW IMAGE REPOSITORIES IN SCHEMA MARIO_DB.PUBLIC;
 SHOW IMAGES IN IMAGE REPOSITORY MARIO_DB.PUBLIC.MARIO_REPO;
@@ -219,11 +219,11 @@ SHOW STREAMLITS LIKE '%MARIO%' IN ACCOUNT;
 -- MARIO_TELEMETRY_DASHBOARD (MARIO_DB)
 --   Original 5-tab dashboard: Event Timeline, Deaths & Levels, Controls & Powerups,
 --   Sessions, Platform Metrics
---   URL: https://app.snowflake.com/SFSEEUROPE/eu_demo200/#/streamlit-apps/MARIO_DB.PUBLIC.MARIO_TELEMETRY_DASHBOARD
+--   URL: https://app.snowflake.com/<YOUR_ORG>/<YOUR_ACCOUNT>/#/streamlit-apps/MARIO_DB.PUBLIC.MARIO_TELEMETRY_DASHBOARD
 
 -- DIS_MARIO_TELEMETRY_DASHBOARD (DIS_MARIO)
 --   Updated dashboard querying interactive tables with 10s cache TTL
---   URL: https://app.snowflake.com/SFSEEUROPE/eu_demo200/#/streamlit-apps/DIS_MARIO.PUBLIC.DIS_MARIO_TELEMETRY_DASHBOARD
+--   URL: https://app.snowflake.com/<YOUR_ORG>/<YOUR_ACCOUNT>/#/streamlit-apps/DIS_MARIO.PUBLIC.DIS_MARIO_TELEMETRY_DASHBOARD
 
 
 -- =====================================================================================
@@ -330,7 +330,7 @@ FROM (
     UNION ALL SELECT 5, 'WAREHOUSE (Interactive)', 'DIS_MARIO_IWH',                   'XS, 24h suspend — sub-second interactive queries'
     UNION ALL SELECT 6, 'COMPUTE POOL',         'MARIO_POOL',                          'CPU_X64_XS — runs Mario game container'
     UNION ALL SELECT 7, 'SPCS SERVICE',         'MARIO_DB.PUBLIC.MARIO_SERVICE',       'nginx + Tomcat + Python OTel sidecar'
-    UNION ALL SELECT 8, 'SERVICE ENDPOINT',     'ei53mb-sfseeurope-eu-demo200.snowflakecomputing.app', 'Public game URL'
+    UNION ALL SELECT 8, 'SERVICE ENDPOINT',     '<INGRESS_HASH>-<YOUR_ACCOUNT>.snowflakecomputing.app', 'Public game URL (run SHOW ENDPOINTS IN SERVICE to find)'
     UNION ALL SELECT 9, 'IMAGE REPOSITORY',     'MARIO_DB.PUBLIC.MARIO_REPO',          'supermario:latest Docker image'
     UNION ALL SELECT 10, 'EVENT TABLE',         'EVENT_DB.EVENT_SH.MY_EVENTS',         '~58M rows — all SPCS telemetry'
     UNION ALL SELECT 11, 'VIEW',                'MARIO_DB.PUBLIC.MARIO_GAME_METRICS',  'All METRIC records (CPU, memory, game counters)'

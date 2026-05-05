@@ -40,7 +40,7 @@ CREATE IMAGE REPOSITORY IF NOT EXISTS MARIO_DB.PUBLIC.MARIO_REPO;
 -- Get the repository URL for Docker push:
 SHOW IMAGE REPOSITORIES IN SCHEMA MARIO_DB.PUBLIC;
 -- Note the repository_url column, e.g.:
---   sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo
+--   <YOUR_ACCOUNT>.registry.snowflakecomputing.com/mario_db/public/mario_repo
 
 -- -----------------------------------------------------------------------------
 -- 5. Compute Pool (for running the SPCS service)

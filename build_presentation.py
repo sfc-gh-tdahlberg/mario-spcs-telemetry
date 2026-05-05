@@ -161,7 +161,7 @@ txt(sl, Inches(0.4), Inches(4.15), Inches(5.1), Inches(0.3),
     "Solutions Engineering Demo  ·  20 min including live demo",
     sz=11, color=SF_NAVY, italic=True)
 txt(sl, Inches(0.4), Inches(4.55), Inches(5.1), Inches(0.3),
-    "github.com/sfc-gh-tdahlberg/mario-spcs-telemetry",
+    "github.com/mario-spcs-telemetry",
     sz=10, color=SF_BLUE, italic=True)
 
 
@@ -510,7 +510,7 @@ for i, (col, label, action) in enumerate(demo_steps):
         action, sz=12, color=WHITE)
 
 txt(sl, Inches(0.4), H - Inches(0.45), Inches(4.8), Inches(0.32),
-    "ei53mb-sfseeurope-eu-demo200.snowflakecomputing.app",
+    "<YOUR_ACCOUNT>.snowflakecomputing.app",
     sz=9, color=SF_BLUE, italic=True)
 
 
@@ -546,7 +546,7 @@ for i, (col, title, body) in enumerate(learnings):
     white_card(sl, lx, ty, Inches(3.08), Inches(2.0), title, body,
                accent=col, title_sz=12, body_sz=11)
 
-footer(sl, "Full details in README.md and docs/index.html · github.com/sfc-gh-tdahlberg/mario-spcs-telemetry")
+footer(sl, "Full details in README.md and docs/index.html · github.com/mario-spcs-telemetry")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -566,8 +566,8 @@ txt(sl, Inches(0.45), Inches(1.55), Inches(5.1), Inches(0.4),
     sz=13, color=DARK_TEXT, italic=True)
 
 links = [
-    ("🎮", "Game URL",       "ei53mb-sfseeurope-eu-demo200\n.snowflakecomputing.app", SF_TEAL),
-    ("💻", "GitHub",         "sfc-gh-tdahlberg/\nmario-spcs-telemetry",              SF_ORANGE),
+    ("🎮", "Game URL",       "<INGRESS_HASH>-<YOUR_ACCOUNT>\n.snowflakecomputing.app", SF_TEAL),
+    ("💻", "GitHub",         "github.com/\nmario-spcs-telemetry",              SF_ORANGE),
     ("📖", "HTML Docs",      "docs/index.html\nfull architecture reference",         SF_PURPLE),
     ("🤖", "Cortex Agent",   "DIS_MARIO.PUBLIC\n.MARIO_INTELLIGENCE",                SF_PINK),
 ]

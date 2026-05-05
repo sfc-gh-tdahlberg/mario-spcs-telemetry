@@ -12,7 +12,7 @@ Browser (Player — authenticated via SPCS ingress)
     │  telemetry.js — hooks game engine, sends player_name + events
     │
     ▼
-SPCS Ingress (https://ei53mb-sfseeurope-eu-demo200.snowflakecomputing.app)
+SPCS Ingress (https://<INGRESS_HASH>-<YOUR_ACCOUNT>.snowflakecomputing.app)
     │  Injects: Sf-Context-Current-User header
     │
     ▼
@@ -122,8 +122,8 @@ All tables: `TARGET_LAG = '1 minute'`, associated with `DIS_MARIO_IWH`.
 ## SPCS Service
 
 **Service:** `MARIO_DB.PUBLIC.MARIO_SERVICE`  
-**Ingress:** `https://ei53mb-sfseeurope-eu-demo200.snowflakecomputing.app`  
-**Image:** `sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest`
+**Ingress:** `https://<INGRESS_HASH>-<YOUR_ACCOUNT>.snowflakecomputing.app` (run `SHOW ENDPOINTS IN SERVICE` to find)  
+**Image:** `<YOUR_ACCOUNT>.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest`
 
 ### Container Architecture
 - **nginx** (port 8080) — SPCS ingress endpoint; routes telemetry to Python, game to Tomcat
@@ -140,18 +140,18 @@ All tables: `TARGET_LAG = '1 minute'`, associated with `DIS_MARIO_IWH`.
 ### Rebuilding & Deploying
 ```bash
 # Authenticate (avoids MFA/TOTP issues)
-snow spcs image-registry login --connection eu_demo200
+snow spcs image-registry login --connection <YOUR_CONNECTION>
 
 # Build (always use --no-cache to avoid stale layers)
 docker build --no-cache --platform linux/amd64 -t supermario ./mario-spcs/
 
 # Tag and push
-docker tag supermario sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
-docker push sfseeurope-eu-demo200.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
+docker tag supermario <YOUR_ACCOUNT>.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
+docker push <YOUR_ACCOUNT>.registry.snowflakecomputing.com/mario_db/public/mario_repo/supermario:latest
 
 # Force service to pull new image (suspend/resume does NOT re-pull)
-snow spcs compute-pool resume MARIO_POOL --connection eu_demo200
-snow sql --role ACCOUNTADMIN -q "ALTER SERVICE MARIO_DB.PUBLIC.MARIO_SERVICE FROM SPECIFICATION $$ ... $$" --connection eu_demo200
+snow spcs compute-pool resume MARIO_POOL --connection <YOUR_CONNECTION>
+snow sql --role ACCOUNTADMIN -q "ALTER SERVICE MARIO_DB.PUBLIC.MARIO_SERVICE FROM SPECIFICATION $$ ... $$" --connection <YOUR_CONNECTION>
 ```
 
 > **Key learnings:**
@@ -190,12 +190,13 @@ Tabs: **Leaderboard** (top scores, last 24h) · Event Timeline · Deaths & Level
 
 ### Streamlit — `DIS_MARIO.PUBLIC.DIS_MARIO_TELEMETRY_DASHBOARD`
 Modern dashboard backed by Interactive Tables (near-realtime, 10s TTL).  
-Player dropdown filter · 6 KPI cards · 5 analytics tabs
+Tabs: **Leaderboard** · Event Timeline · Deaths & Levels · Controls & Powerups · Sessions · Platform Metrics  
+Player dropdown filter · 6 KPI cards · auto-refresh
 
 ### React App — `mario-react-app/`
 Next.js 16.2.3 dashboard, port 3456 locally.  
-JWT auth locally (`~/.snowflake/keys/cloetta/rsa_key.p8`), OAuth token in SPCS.  
-Tabs: Overview · Live Events · Analytics · Data Pipeline (animated flow)
+JWT auth locally (`~/.snowflake/keys/<YOUR_KEY>/rsa_key.p8`), OAuth token in SPCS.  
+Tabs: **Leaderboard** · Overview · Live Events · Analytics · Data Pipeline (animated flow) · SPCS Metrics
 
 ---
 
@@ -228,24 +229,24 @@ Slides: Cover → Agenda → What We Built → Architecture → Container Stack 
 
 ### 1. Start SPCS Service
 ```bash
-snow spcs compute-pool resume MARIO_POOL --connection eu_demo200
-snow spcs service resume MARIO_DB.PUBLIC.MARIO_SERVICE --connection eu_demo200
+snow spcs compute-pool resume MARIO_POOL --connection <YOUR_CONNECTION>
+snow spcs service resume MARIO_DB.PUBLIC.MARIO_SERVICE --connection <YOUR_CONNECTION>
 ```
 
 ### 2. Start React App (local dev)
 ```bash
-SNOWFLAKE_CONNECTION_NAME=eu_demo200 npm run dev --prefix mario-react-app -- -p 3456
+SNOWFLAKE_CONNECTION_NAME=<YOUR_CONNECTION> npm run dev --prefix mario-react-app -- -p 3456
 ```
 
 ### 3. Deploy Streamlit
 ```bash
-uvx --from snowflake-cli snow streamlit deploy --replace --connection eu_demo200 --role ACCOUNTADMIN
+uvx --from snowflake-cli snow streamlit deploy --replace --connection <YOUR_CONNECTION> --role ACCOUNTADMIN
 ```
 
 ### 4. Suspend Everything
 ```bash
-snow spcs service suspend MARIO_DB.PUBLIC.MARIO_SERVICE --connection eu_demo200
-snow spcs compute-pool suspend MARIO_POOL --connection eu_demo200
+snow spcs service suspend MARIO_DB.PUBLIC.MARIO_SERVICE --connection <YOUR_CONNECTION>
+snow spcs compute-pool suspend MARIO_POOL --connection <YOUR_CONNECTION>
 ```
 
 ---

@@ -23,10 +23,11 @@ st.markdown(
 @st.cache_data(ttl=timedelta(seconds=10))
 def load_players():
     return session.sql("""
-        SELECT PLAYER_NAME, COUNT(*) AS SESSIONS,
-               CONVERT_TIMEZONE('UTC', 'Europe/Stockholm', MAX(SESSION_START)::TIMESTAMP_NTZ) AS LAST_SEEN
-        FROM DIS_MARIO.PUBLIC.PLAYER_SESSIONS_LIVE
-        WHERE PLAYER_NAME IS NOT NULL
+        SELECT PLAYER_NAME,
+               COUNT(CASE WHEN EVENT_TYPE = 'mario.game_start' THEN 1 END) AS SESSIONS,
+               CONVERT_TIMEZONE('UTC', 'Europe/Stockholm', MAX(TIMESTAMP)::TIMESTAMP_NTZ) AS LAST_SEEN
+        FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE
+        WHERE PLAYER_NAME IS NOT NULL AND PLAYER_NAME != 'unknown'
         GROUP BY PLAYER_NAME ORDER BY SESSIONS DESC
     """).to_pandas()
 
@@ -51,7 +52,23 @@ def load_stats(player_filter=""):
             (SELECT COUNT(*) FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE WHERE EVENT_TYPE='mario.coin' {player_filter}) AS TOTAL_COINS,
             (SELECT COUNT(*) FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE WHERE EVENT_TYPE='mario.level_win' {player_filter}) AS TOTAL_LEVELS_WON,
             (SELECT SUM(COUNT) FROM DIS_MARIO.PUBLIC.POWERUPS_LIVE {player_filter.replace('AND', 'WHERE', 1) if player_filter else ''}) AS TOTAL_POWERUPS,
-            (SELECT COUNT(*) FROM DIS_MARIO.PUBLIC.PLAYER_SESSIONS_LIVE {player_filter.replace('AND', 'WHERE', 1) if player_filter else ''}) AS TOTAL_SESSIONS
+            (SELECT COUNT(*) FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE WHERE EVENT_TYPE='mario.game_start' {player_filter}) AS TOTAL_SESSIONS
+    """).to_pandas()
+
+@st.cache_data(ttl=timedelta(seconds=10))
+def load_leaderboard():
+    return session.sql("""
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY COINS::INT DESC, DURATION::FLOAT ASC) AS RANK,
+            PLAYER_NAME, LEVEL AS FINAL_LEVEL, COINS::INT AS COINS,
+            ROUND(DURATION::FLOAT, 1) AS DURATION_SECONDS,
+            CONVERT_TIMEZONE('UTC', 'Europe/Stockholm', TIMESTAMP::TIMESTAMP_NTZ) AS GAME_TIME
+        FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE
+        WHERE EVENT_TYPE = 'mario.game_over'
+          AND TIMESTAMP >= DATEADD(DAY, -1, CURRENT_TIMESTAMP())
+          AND PLAYER_NAME IS NOT NULL AND PLAYER_NAME != 'unknown'
+        ORDER BY COINS::INT DESC, DURATION::FLOAT ASC
+        LIMIT 20
     """).to_pandas()
 
 @st.cache_data(ttl=timedelta(seconds=10))
@@ -87,12 +104,16 @@ def load_powerups(player_filter_where=""):
 
 @st.cache_data(ttl=timedelta(seconds=10))
 def load_sessions(player_filter_where=""):
+    pf = player_filter_where.replace("WHERE", "AND") if player_filter_where else ""
     return session.sql(f"""
-        SELECT PLAYER_NAME, SESSION_ID,
-               CONVERT_TIMEZONE('UTC', 'Europe/Stockholm', SESSION_START::TIMESTAMP_NTZ) AS SESSION_START,
-               CONVERT_TIMEZONE('UTC', 'Europe/Stockholm', SESSION_END::TIMESTAMP_NTZ) AS SESSION_END,
-               DURATION_SECONDS, DEATHS, COINS, LEVELS_WON, HIGHEST_LEVEL
-        FROM DIS_MARIO.PUBLIC.PLAYER_SESSIONS_LIVE {player_filter_where} ORDER BY SESSION_START DESC
+        SELECT PLAYER_NAME,
+               TIMESTAMP AS SESSION_START,
+               LEVEL, COINS::INT AS COINS, LIVES::INT AS LIVES,
+               ROUND(DURATION::FLOAT, 1) AS DURATION_SECONDS
+        FROM DIS_MARIO.PUBLIC.GAME_EVENTS_LIVE
+        WHERE EVENT_TYPE = 'mario.game_over' {pf}
+        ORDER BY TIMESTAMP DESC
+        LIMIT 50
     """).to_pandas()
 
 @st.cache_data(ttl=timedelta(seconds=30))
@@ -159,7 +180,8 @@ if not stats.empty:
     with c6:
         st.metric("Sessions", int(stats["TOTAL_SESSIONS"].iloc[0]))
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    ":trophy: Leaderboard",
     ":chart_with_upwards_trend: Event Timeline",
     ":skull: Deaths & Levels",
     ":joystick: Controls & Powerups",
@@ -168,6 +190,14 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 with tab1:
+    st.subheader(":trophy: Leaderboard — Last 24 Hours")
+    lb = load_leaderboard()
+    if not lb.empty:
+        st.dataframe(lb, use_container_width=True)
+    else:
+        st.info("No games completed in the last 24 hours. Play Mario to get on the board!")
+
+with tab2:
     st.subheader(":chart_with_upwards_trend: Game Events Over Time")
     timeline = load_event_timeline()
     if not timeline.empty:
@@ -180,7 +210,7 @@ with tab1:
     else:
         st.info("No events yet.")
 
-with tab2:
+with tab3:
     col1, col2 = st.columns(2)
     with col1:
         st.subheader(":skull: Deaths by Level")
@@ -197,7 +227,7 @@ with tab2:
         else:
             st.info("No powerups yet.")
 
-with tab3:
+with tab4:
     st.subheader(":joystick: Key Press Distribution")
     keys = load_key_presses(player_filter_where)
     if not keys.empty:
@@ -205,7 +235,7 @@ with tab3:
     else:
         st.info("No key presses recorded.")
 
-with tab4:
+with tab5:
     st.subheader(":video_game: Player Sessions")
     sessions = load_sessions(player_filter_where)
     if not sessions.empty:
@@ -213,7 +243,7 @@ with tab4:
     else:
         st.info("No sessions yet.")
 
-with tab5:
+with tab6:
     st.subheader(":gear: Container Platform Metrics")
     range_options = {"Last 15 min": 15, "Last 1 hour": 60, "Last 6 hours": 360, "Last 24 hours": 1440, "All time": None}
     pcol1, pcol2 = st.columns([3, 1])
